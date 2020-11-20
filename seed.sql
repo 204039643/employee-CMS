@@ -33,3 +33,4 @@ values ("developer","125000","100");
 
 insert into employee (first_name,last_name,role_id,manager_id)
 values ("John","Doe","10","101");
+
