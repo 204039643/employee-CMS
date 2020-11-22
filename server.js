@@ -1,6 +1,7 @@
+//JS variables including requires
 const inquirer = require('inquirer')
 const mysql = require('mysql')
-const cTable = require('console.table');
+const cTable = require('console.table')
 const splashMsg = `----------------------------------------------------\r
 EMPLOYEE-CMS APP START!
 ───────────▒▒▒▒▒▒▒▒
@@ -28,9 +29,10 @@ EMPLOYEE-CMS APP START!
 ───────▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓
 ─────────▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓
 ───────────▓▓▓▓▓▓▒▒▒▒▒▓▓▓▓
-───────────────▓▓▓▓▓▓▓▓`;
+───────────────▓▓▓▓▓▓▓▓
+ `
 
-
+//Establish connection to MySql server
 const connection = mysql.createConnection({
   host: 'localhost',
   port: 3306,
@@ -39,13 +41,19 @@ const connection = mysql.createConnection({
   database: 'CMS_db'
 })
 
-connection.connect(function (err) {
-  if (err) throw err
-  console.log('connected as id ' + connection.threadId + '\n')
-})
+//Define functions
+const splash = () => {
+  //Test connection and handle any errors
+  connection.connect(function (err) {
+    if (err) throw err
+
+  })
+  console.log(splashMsg)
+  console.log('connection successful!')
+  console.log('\n')
+}
 
 const promptStart = () => {
- console.log(splashMsg);
   return inquirer
     .prompt([
       {
@@ -58,50 +66,56 @@ const promptStart = () => {
           'View employees by manager',
           'Add an employee',
           'Delete an employee',
-          'Update an Employee'
+          'Update an Employee',
+          'Quit'
         ]
       }
     ])
     .then(response => {
       if (response.userAction === 'View all employees') {
-        selectAll();
+        viewAll()
       } else if (response.userAction === 'View employees by department') {
         return inquirer
-        .prompt([
-          {
-            type: 'list',
-            name: 'departmentName',
-            message: 'Please select a department:',
-            choices: [
-              'Engineering',
-              'Sales',
-              'Finance'
-            ]
-          }
-        ])
-        .then(response => {
-            console.log(response);
-            viewDepartment();
-            return response;
-        })
+          .prompt([
+            {
+              type: 'list',
+              name: 'departmentName',
+              message: 'Please select a department:',
+              choices: ['Engineering', 'Sales', 'Finance', 'Management']
+            }
+          ])
+          .then(response => {
+            const department = response
+            viewDepartment(department)
+          })
       }
     })
 }
 
-const selectAll = () => {
-  connection.query('select * from employee;', (err, res) => {
-    if (err) throw err
-    console.table(res)
-  })
+const viewAll = () => {
+  console.log('\n')
+  connection.query(
+    'select employee.id, first_name,last_name, title, salary, name as "department name" from employee join role ON employee.role_id = role.id join department ON role.department_id = department.id;',
+    (err, res) => {
+      if (err) throw err
+      console.table(res)
+      promptStart()
+    }
+  )
 }
 
-const viewDepartment = () => {
-    connection.query(`select * from department inner join employee on department.id = employee.id where department.name = "engineering";`, (err, res) => {
-      if (err) throw err;
-      console.table(res);
-      connection.end();
-    })
-  }
+const viewDepartment = depart => {
+  console.log('\n')
+  connection.query(
+    `select employee.id, first_name,last_name, title, salary, name as "department name" from employee join role ON employee.role_id = role.id join department ON role.department_id = department.id where department.name = "${depart.departmentName}";`,
+    (err, res) => {
+      if (err) throw err
+      console.table(res)
+      promptStart()
+    }
+  )
+}
 
-
+//Functions calls
+splash()
 promptStart()
