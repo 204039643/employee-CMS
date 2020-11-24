@@ -74,19 +74,28 @@ const promptStart = () => {
       if (response.userAction === 'View all employees') {
         viewAll()
       } else if (response.userAction === 'View employees by department') {
-        return inquirer
-          .prompt([
-            {
-              type: 'list',
-              name: 'departmentName',
-              message: 'Please select a department:',
-              choices: ['Engineering', 'Sales', 'Finance', 'Management']
-            }
-          ])
-          .then(response => {
-            const department = response
-            viewDepartment(department)
-          })
+        connection.query('select name from department;', (err, res) => {
+          if (err) throw err
+          inquirer
+            .prompt([
+              {
+                type: 'list',
+                name: 'departmentName',
+                message: 'Please select a department:',
+                choices: function () {
+                  var departmentArray = []
+                  for (var i = 0; i < res.length; i++) {
+                    departmentArray.push(res[i].name + ' ' + (i + 1))
+                  }
+                  return departmentArray
+                }
+              }
+            ])
+            .then(response => {
+              const department = response
+              viewDepartment(department)
+            })
+        })
       } else if (response.userAction === 'View employees by manager') {
         viewManager()
       } else if (response.userAction === 'Add an employee') {
@@ -120,7 +129,7 @@ const promptStart = () => {
                 type: 'rawlist',
                 name: 'employeeManager',
                 message: 'Please select a manager:',
-                choices: ['None ', 'Sweeny Todd 4', 'Linda Sykes 5']
+                choices: ['None', 'Sweeny Todd 4', 'Linda Sykes 5']
               }
             ])
             .then(response => {
@@ -128,15 +137,14 @@ const promptStart = () => {
               addEmployee(newEmployee)
             })
         })
-      }
-      else connection.end()
+      } else connection.end()
     })
 }
 
 const viewAll = () => {
   console.log('\n')
   connection.query(
-    'select employee.id, employee.first_name, employee.last_name, role.title, role.salary, department.name as "department name", manager.first_name as manager from employee join role ON employee.role_id = role.id join department ON role.department_id = department.id JOIN employee manager on manager.id = employee.manager_id order by id;',
+    'select employee.id, employee.first_name, employee.last_name, role.title, role.salary, department.name as "department name", manager.first_name as manager from employee join role ON employee.role_id = role.id join department ON role.department_id = department.id LEFT JOIN employee manager on manager.id = employee.manager_id order by id;',
     (err, res) => {
       if (err) throw err
       console.table(res)
@@ -148,7 +156,8 @@ const viewAll = () => {
 const viewDepartment = depart => {
   console.log('\n')
   connection.query(
-    `select employee.id, first_name,last_name, title, salary, name as "department name" from employee join role ON employee.role_id = role.id join department ON role.department_id = department.id where department.name = "${depart.departmentName}";`,
+    'select employee.id, employee.first_name, employee.last_name, role.title, role.salary, department.name as "department name", manager.first_name as manager from employee join role ON employee.role_id = role.id join department ON role.department_id = department.id left JOIN employee manager on manager.id = employee.manager_id where department.?;',
+    { id: depart.departmentName.charAt(depart.departmentName.length - 1) },
     (err, res) => {
       if (err) throw err
       console.table(res)
@@ -178,6 +187,10 @@ const viewManager = () => {
 }
 
 const addEmployee = addEmp => {
+  let newMan = addEmp.employeeManager.charAt(addEmp.employeeManager.length - 1)
+  if ((newMan = 'None')) {
+    newMan = null
+  }
   console.log('\n')
   connection.query(
     'insert into employee SET ?;',
@@ -185,7 +198,7 @@ const addEmployee = addEmp => {
       first_name: addEmp.firstName,
       last_name: addEmp.lastName,
       role_id: addEmp.employeeRole.charAt(addEmp.employeeRole.length - 1),
-      manager_id: addEmp.employeeManager.charAt(addEmp.employeeManager.length - 1)
+      manager_id: newMan
     },
     (err, res) => {
       if (err) throw err
