@@ -65,7 +65,8 @@ const promptStart = () => {
           'View employees by manager',
           'Add an employee',
           'Remove an employee',
-          'Update an Employee',
+          'Update an employee role',
+          'Update an employee manager',
           'Quit'
         ]
       }
@@ -139,7 +140,7 @@ const promptStart = () => {
         })
       } else if (response.userAction === 'Remove an employee') {
         connection.query(
-          'select id, first_name, last_name from employee;',
+          'select first_name, last_name from employee;',
           (err, res) => {
             if (err) throw err
             inquirer
@@ -163,7 +164,39 @@ const promptStart = () => {
               })
           }
         )
-      } else connection.end()
+      } else if (response.userAction === 'Update an employee role') {
+      connection.query(
+        'select first_name, last_name from employee;',
+        (err, res) => {
+          if (err) throw err
+          inquirer
+            .prompt([
+              {
+                type: 'rawlist',
+                name: 'employeeSelect',
+                message: 'Please select employee to update:',
+                choices: function () {
+                  var updateRoleArray = []
+                  for (var i = 0; i < res.length; i++) {
+                    updateRoleArray.push(res[i].first_name + " " + res[i].last_name)
+                  }
+                  return updateRoleArray
+                }
+              },
+              {
+                type: 'list',
+                name: 'employeeRoleUpdate',
+                message: "Select new role:",
+                choices: ['developer - 1','sales rep - 2','finance manager - 3','manager - 4']
+              }
+            ])
+            .then(response => {
+              const roleUpdate = response
+              updateEmployeeRole(roleUpdate)
+            })
+        }
+      )
+    } else connection.end()
     })
 }
 
@@ -244,6 +277,19 @@ const delEmployee = delEmp => {
     (err, res) => {
       if (err) throw err
       console.log('Deleted employee!')
+      console.log('\n')
+      promptStart()
+    }
+  )
+}
+
+const updateEmployeeRole = upRole => {
+  console.log('\n')
+  connection.query(
+    'update employee set role_id = ? where first_name = ? and last_name = ?;', [upRole.employeeRoleUpdate.charAt(upRole.employeeRoleUpdate.length - 1),upRole.employeeSelect.substr(0, upRole.employeeSelect.indexOf(" ")),lastWord(upRole.employeeSelect)],
+    (err, res) => {
+      if (err) throw err
+      console.log('Updated employee role!')
       console.log('\n')
       promptStart()
     }
