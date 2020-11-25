@@ -52,6 +52,7 @@ const splash = () => {
   console.log('\n')
 }
 
+//Start user prompting in console
 const promptStart = () => {
   return inquirer
     .prompt([
@@ -64,9 +65,10 @@ const promptStart = () => {
           'View employees by department',
           'View employees by manager',
           'Add an employee',
+          'Add a role',
           'Remove an employee',
           'Update an employee role',
-          'Update an employee manager',
+          "Update an employee's manager",
           'Quit'
         ]
       }
@@ -138,6 +140,39 @@ const promptStart = () => {
               addEmployee(newEmployee)
             })
         })
+      } else if (response.userAction === 'Add a role') {
+        connection.query('select id, name from department;', (err, res) => {
+          if (err) throw err
+          inquirer
+            .prompt([
+              {
+                type: 'input',
+                name: 'newTitle',
+                message: 'Enter new role: '
+              },
+              {
+                type: 'input',
+                name: 'newSalary',
+                message: 'Enter salary for new role: '
+              },
+              {
+                type: 'rawlist',
+                name: 'selectDepartment',
+                message: 'Select department for new role:',
+                choices: function () {
+                  var deptArray = []
+                  for (var i = 0; i < res.length; i++) {
+                    deptArray.push(res[i].name + ' ' + (i + 1))
+                  }
+                  return deptArray
+                }
+              }
+            ])
+            .then(response => {
+              const newRole = response
+              addRole(newRole)
+            })
+        })
       } else if (response.userAction === 'Remove an employee') {
         connection.query(
           'select first_name, last_name from employee;',
@@ -152,7 +187,7 @@ const promptStart = () => {
                   choices: function () {
                     var delArray = []
                     for (var i = 0; i < res.length; i++) {
-                      delArray.push(res[i].first_name + " " + res[i].last_name)
+                      delArray.push(res[i].first_name + ' ' + res[i].last_name)
                     }
                     return delArray
                   }
@@ -165,41 +200,83 @@ const promptStart = () => {
           }
         )
       } else if (response.userAction === 'Update an employee role') {
-      connection.query(
-        'select first_name, last_name from employee;',
-        (err, res) => {
-          if (err) throw err
-          inquirer
-            .prompt([
-              {
-                type: 'rawlist',
-                name: 'employeeSelect',
-                message: 'Please select employee to update:',
-                choices: function () {
-                  var updateRoleArray = []
-                  for (var i = 0; i < res.length; i++) {
-                    updateRoleArray.push(res[i].first_name + " " + res[i].last_name)
+        connection.query(
+          'select first_name, last_name from employee;',
+          (err, res) => {
+            if (err) throw err
+            inquirer
+              .prompt([
+                {
+                  type: 'rawlist',
+                  name: 'employeeSelect',
+                  message: 'Please select employee to update:',
+                  choices: function () {
+                    var updateRoleArray = []
+                    for (var i = 0; i < res.length; i++) {
+                      updateRoleArray.push(
+                        res[i].first_name + ' ' + res[i].last_name
+                      )
+                    }
+                    return updateRoleArray
                   }
-                  return updateRoleArray
+                },
+                {
+                  type: 'list',
+                  name: 'employeeRoleUpdate',
+                  message: 'Select new role:',
+                  choices: [
+                    'developer - 1',
+                    'sales rep - 2',
+                    'finance manager - 3',
+                    'manager - 4'
+                  ]
                 }
-              },
-              {
-                type: 'list',
-                name: 'employeeRoleUpdate',
-                message: "Select new role:",
-                choices: ['developer - 1','sales rep - 2','finance manager - 3','manager - 4']
-              }
-            ])
-            .then(response => {
-              const roleUpdate = response
-              updateEmployeeRole(roleUpdate)
-            })
-        }
-      )
-    } else connection.end()
+              ])
+              .then(response => {
+                const roleUpdate = response
+                updateEmployeeRole(roleUpdate)
+              })
+          }
+        )
+      } else if (response.userAction === "Update an employee's manager") {
+        connection.query(
+          'select first_name, last_name from employee;',
+          (err, res) => {
+            if (err) throw err
+            inquirer
+              .prompt([
+                {
+                  type: 'rawlist',
+                  name: 'employeeSelect',
+                  message: 'Please select employee to update:',
+                  choices: function () {
+                    var updateRoleArray = []
+                    for (var i = 0; i < res.length; i++) {
+                      updateRoleArray.push(
+                        res[i].first_name + ' ' + res[i].last_name
+                      )
+                    }
+                    return updateRoleArray
+                  }
+                },
+                {
+                  type: 'list',
+                  name: 'employeeManagerUpdate',
+                  message: 'Select new manager:',
+                  choices: ['None ', 'Sweeny Todd 4', 'Linda Sykes 5']
+                }
+              ])
+              .then(response => {
+                const managerUpdate = response
+                updateEmployeeManager(managerUpdate)
+              })
+          }
+        )
+      } else connection.end()
     })
 }
 
+//build view that displays all employees including department and manager
 const viewAll = () => {
   console.log('\n')
   connection.query(
@@ -212,6 +289,7 @@ const viewAll = () => {
   )
 }
 
+//View employees by department (similar to view all but filtered to selected department)
 const viewDepartment = depart => {
   console.log('\n')
   connection.query(
@@ -225,6 +303,7 @@ const viewDepartment = depart => {
   )
 }
 
+//special view to show manager and direct reports as 2 columns ordered by manager
 const viewManager = () => {
   console.log('\n')
   connection.query(
@@ -245,6 +324,7 @@ const viewManager = () => {
   )
 }
 
+//add new employee to employee table using inputs from inquirer
 const addEmployee = addEmp => {
   let newMan = addEmp.employeeManager.charAt(addEmp.employeeManager.length - 1)
   if ((newMan = 'None')) {
@@ -268,12 +348,37 @@ const addEmployee = addEmp => {
   )
 }
 
+//add new title to role table
+const addRole = addTitle => {
+  console.log('\n')
+  connection.query(
+    'insert into role SET ? ',
+    {
+      title: addTitle.newTitle,
+      salary: addTitle.newSalary,
+      department_id: addTitle.selectDepartment.charAt(
+        addTitle.selectDepartment.length - 1
+      )
+    },
+    (err, res) => {
+      if (err) throw err
+      console.log('Added role!')
+      console.log('\n')
+      promptStart()
+    }
+  )
+}
+
+//remove employee from employee table using inputs from inquirer
 const delEmployee = delEmp => {
   console.log('\n')
   console.log(delEmp)
   connection.query(
     'delete from employee where first_name = ? and last_name = ?',
-    [delEmp.employeeDelete.substr(0, delEmp.employeeDelete.indexOf(" ")),lastWord(delEmp.employeeDelete)],
+    [
+      delEmp.employeeDelete.substr(0, delEmp.employeeDelete.indexOf(' ')),
+      lastWord(delEmp.employeeDelete)
+    ],
     (err, res) => {
       if (err) throw err
       console.log('Deleted employee!')
@@ -283,23 +388,89 @@ const delEmployee = delEmp => {
   )
 }
 
+//update employee.role_id to employee table using inputs from inquirer prompts
 const updateEmployeeRole = upRole => {
   console.log('\n')
+  let upMan = upRole.employeeRoleUpdate.charAt(
+    upRole.employeeRoleUpdate.length - 1
+  )
   connection.query(
-    'update employee set role_id = ? where first_name = ? and last_name = ?;', [upRole.employeeRoleUpdate.charAt(upRole.employeeRoleUpdate.length - 1),upRole.employeeSelect.substr(0, upRole.employeeSelect.indexOf(" ")),lastWord(upRole.employeeSelect)],
+    'update employee set role_id = ? where first_name = ? and last_name = ?;',
+    [
+      upMan,
+      upRole.employeeSelect.substr(0, upRole.employeeSelect.indexOf(' ')),
+      lastWord(upRole.employeeSelect)
+    ],
     (err, res) => {
       if (err) throw err
-      console.log('Updated employee role!')
-      console.log('\n')
-      promptStart()
     }
   )
+  //check for manager role and update to null if true
+  if ((upMan = 4)) {
+    connection.query(
+      'update employee set manager_id = null where first_name = ? and last_name = ?;',
+      [
+        upRole.employeeSelect.substr(0, upRole.employeeSelect.indexOf(' ')),
+        lastWord(upRole.employeeSelect)
+      ],
+      (err, res) => {
+        if (err) throw err
+      }
+    )
+  }
+  console.log('Updated employee role!')
+  console.log('\n')
+  promptStart()
+}
+
+//Update manager ID for employee in employee table
+const updateEmployeeManager = upManager => {
+  console.log('\n')
+  let upManOne = upManager.employeeManagerUpdate.charAt(
+    upManager.employeeManagerUpdate.length - 1
+  )
+  //check for manager role and update to null if true
+  if ((upManOne = null)) {
+    connection.query(
+      'update employee set manager_id = null where first_name = ? and last_name = ?;',
+      [
+        upManager.employeeSelect.substr(
+          0,
+          upManager.employeeSelect.indexOf(' ')
+        ),
+        lastWord(upRole.employeeSelect)
+      ],
+      (err, res) => {
+        if (err) throw err
+      }
+    )
+  } else {
+    connection.query(
+      'update employee set manager_id = ? where first_name = ? and last_name = ?;',
+      [
+        upManager.employeeManagerUpdate.charAt(
+          upManager.employeeManagerUpdate.length - 1
+        ),
+        upManager.employeeSelect.substr(
+          0,
+          upManager.employeeSelect.indexOf(' ')
+        ),
+        lastWord(upManager.employeeSelect)
+      ],
+      (err, res) => {
+        if (err) throw err
+      }
+    )
+  }
+  console.log("Updated employee's Manager!")
+  console.log('\n')
+  promptStart()
 }
 
 //select last word in string
-const lastWord = (words) => {
-  let n = words.replace(/[\[\]?.,\/#!$%\^&\*;:{}=\\|_~()]/g, "").split(" ");
-  return n[n.length - 1];
+const lastWord = words => {
+  let n = words.replace(/[\[\]?.,\/#!$%\^&\*;:{}=\\|_~()]/g, '').split(' ')
+  return n[n.length - 1]
 }
 
 //Functions calls
