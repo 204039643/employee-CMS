@@ -64,7 +64,7 @@ const promptStart = () => {
           'View employees by department',
           'View employees by manager',
           'Add an employee',
-          'Delete an employee',
+          'Remove an employee',
           'Update an Employee',
           'Quit'
         ]
@@ -137,6 +137,32 @@ const promptStart = () => {
               addEmployee(newEmployee)
             })
         })
+      } else if (response.userAction === 'Remove an employee') {
+        connection.query(
+          'select id, first_name, last_name from employee;',
+          (err, res) => {
+            if (err) throw err
+            inquirer
+              .prompt([
+                {
+                  type: 'rawlist',
+                  name: 'employeeDelete',
+                  message: 'Please select employee to remove:',
+                  choices: function () {
+                    var delArray = []
+                    for (var i = 0; i < res.length; i++) {
+                      delArray.push(res[i].first_name + " " + res[i].last_name)
+                    }
+                    return delArray
+                  }
+                }
+              ])
+              .then(response => {
+                const oldEmployee = response
+                delEmployee(oldEmployee)
+              })
+          }
+        )
       } else connection.end()
     })
 }
@@ -207,6 +233,27 @@ const addEmployee = addEmp => {
       promptStart()
     }
   )
+}
+
+const delEmployee = delEmp => {
+  console.log('\n')
+  console.log(delEmp)
+  connection.query(
+    'delete from employee where first_name = ? and last_name = ?',
+    [delEmp.employeeDelete.substr(0, delEmp.employeeDelete.indexOf(" ")),lastWord(delEmp.employeeDelete)],
+    (err, res) => {
+      if (err) throw err
+      console.log('Deleted employee!')
+      console.log('\n')
+      promptStart()
+    }
+  )
+}
+
+//select last word in string
+const lastWord = (words) => {
+  let n = words.replace(/[\[\]?.,\/#!$%\^&\*;:{}=\\|_~()]/g, "").split(" ");
+  return n[n.length - 1];
 }
 
 //Functions calls
